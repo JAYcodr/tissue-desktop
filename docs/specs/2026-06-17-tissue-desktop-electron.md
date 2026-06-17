@@ -60,7 +60,7 @@
   - 修改原项目文件的地方已添加 `// DESKTOP-MODIFIED: ...` 或 `# DESKTOP-MODIFIED: ...` 注释。
   - TypeScript 编译通过；ESLint 未引入新错误。
 - [x] **交付物**：
-  - 更新 `README.md`（桌面版运行/构建说明）。
+  - 更新 `README.md`（桌面版运行/构建说明、明确项目来源）。
   - 更新 `AGENTS.md`（桌面版开发约定）。
   - 维护本 Spec。
 - [x] **验证方式**：
@@ -173,7 +173,7 @@
 | 修改 | `app/api/home.py` | 日志路径解析 |
 | 新增 | `package.json` | 根目录 Electron 工作区配置 |
 | 修改 | `.gitignore` | 忽略 Electron/Python 构建产物 |
-| 修改 | `README.md` | 桌面版说明 |
+| 修改 | `README.md` | 桌面版说明、项目来源 |
 | 修改 | `AGENTS.md` | 桌面版开发约定 |
 
 ### 7.4 风险点与实际情况
@@ -202,3 +202,4 @@
 | 2026-06-17 | 实现 Electron 外壳与后端 sidecar | Kimi-CLI | agent/kimi/electron-shell |
 | 2026-06-17 | 完成前端桌面化适配 | Kimi-CLI | agent/kimi/frontend-desktop |
 | 2026-06-17 | 完成 PyInstaller 打包与 CI | Kimi-CLI | agent/kimi/packaging |
+| 2026-06-17 | 迁移代码托管到 GitHub，README 明确项目来源 | Kimi-CLI | main |

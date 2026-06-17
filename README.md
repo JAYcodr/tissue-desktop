@@ -1,10 +1,18 @@
 # Tissue Desktop
 
-> 本项目是 [tissue](https://github.com/chris-2s/tissue) 的 **Electron 桌面版**，开发目录独立于上游 Docker 版本。前端 UI 与后端逻辑尽量复用上游，仅做桌面化适配。
+> 本项目是 [tissue](https://github.com/chris-2s/tissue) 的 **Electron 桌面版**，由社区爱好者基于上游开源版本进行桌面化适配。
+> 
+> **前端 UI、后端业务逻辑、数据库模型等核心代码均复用自 [chris-2s/tissue](https://github.com/chris-2s/tissue)**；本仓库仅增加 Electron 外壳、Python sidecar 启动、桌面路径适配、打包脚本及 CI 配置，方便不想使用 Docker 的用户在 macOS / Windows 上直接运行。
 
 老师教材刮削工具，提供海报下载、元数据匹配等功能，使教材能够在Jellyfin、Emby、Kodi等工具里装订成册，便于学习。
 
 [效果图传送阵](#talk-is-cheap-show-me-the-view)
+
+### 项目来源
+
+- **上游项目**：[https://github.com/chris-2s/tissue](https://github.com/chris-2s/tissue)
+- **原作者**：chris-2s
+- **本仓库定位**：上游项目的 Electron 桌面化分支，非官方版本。
 
 ### 注意事项
 
