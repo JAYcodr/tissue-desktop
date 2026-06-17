@@ -1,0 +1,14 @@
+from sqlalchemy import Column, Integer, String, Boolean, Text
+
+from app.db.models.base import Base
+
+
+class Site(Base):
+    __tablename__ = 'site'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    spider_key = Column(String, nullable=False)
+    priority = Column(Integer, nullable=False)
+    alternate_host = Column(String, nullable=True)
+    status = Column(Boolean, nullable=True)
+    cookies = Column(Text, nullable=True)
