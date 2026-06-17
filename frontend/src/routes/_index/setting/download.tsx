@@ -3,6 +3,7 @@ import * as api from "../../../apis/setting.ts";
 import {useRequest} from "ahooks";
 import {createFileRoute} from "@tanstack/react-router";
 import {TransModeOptions} from "../../../utils/constants.ts";
+import DirectoryInput from "../../../components/DirectoryInput"; // DESKTOP-MODIFIED: 引入目录选择组件
 
 export const Route = createFileRoute('/_index/setting/download')({
     component: SettingDownload
@@ -51,10 +52,10 @@ function SettingDownload() {
                     </Form.Item>
                     <Form.Item label={'下载路径'} name={'download_path'}
                                tooltip={'将下载路径对应到系统路径，解决下载器和系统下载路径不一致的问题'}>
-                        <Input/>
+                        <DirectoryInput/> {/* DESKTOP-MODIFIED: 支持桌面目录选择 */}
                     </Form.Item>
                     <Form.Item label={'对应路径'} name={'mapping_path'}>
-                        <Input/>
+                        <DirectoryInput/> {/* DESKTOP-MODIFIED: 支持桌面目录选择 */}
                     </Form.Item>
                     <Form.Item label={'自动转移(Beta)'} name={'trans_auto'} valuePropName={'checked'}
                                tooltip={'下载完成后是否自动转移到影片任务'}>

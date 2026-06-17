@@ -1,8 +1,9 @@
-import {Button, Form, Input, message, Select, Skeleton} from "antd";
+import {Button, Form, message, Select, Skeleton} from "antd";
 import * as api from "../../../apis/setting.ts";
 import {useRequest} from "ahooks";
 import {createFileRoute} from "@tanstack/react-router";
 import {TransModeOptions} from "../../../utils/constants.ts";
+import DirectoryInput from "../../../components/DirectoryInput"; // DESKTOP-MODIFIED: 引入目录选择组件
 
 
 export const Route = createFileRoute('/_index/setting/file')({
@@ -37,7 +38,7 @@ function SettingFile(props: { data?: any }) {
             <div className={'w-[600px] max-w-full my-0 mx-auto'}>
                 <Form layout={'vertical'} form={form} onFinish={onFinish}>
                     <Form.Item label={'文件路径'} name={'path'}>
-                        <Input/>
+                        <DirectoryInput/> {/* DESKTOP-MODIFIED: 支持桌面目录选择 */}
                     </Form.Item>
                     <Form.Item label={'转移模式'} name={'trans_mode'}>
                         <Select>
