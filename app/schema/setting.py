@@ -2,20 +2,25 @@ from configparser import ConfigParser
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.utils.paths import get_config_path, get_default_media_paths
+
+
+# DESKTOP-MODIFIED: default media paths depend on runtime mode (Docker vs desktop)
+_default_media_paths = get_default_media_paths()
 
 
 class SettingApp(BaseModel):
     timeout: int = 60
-
-    video_path: str = '/data/media'
+    video_path: str = Field(default_factory=lambda: _default_media_paths["video_path"])
 
     video_size_minimum: int = 100
     video_format: str = '.mp4,.mkv,.mov'
 
 
 class SettingFile(BaseModel):
-    path: str = '/data/file'
+    path: str = Field(default_factory=lambda: _default_media_paths["file_path"])
     trans_mode: str = 'copy'
 
 
@@ -24,8 +29,8 @@ class SettingDownload(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     trans_mode: str = 'copy'
-    download_path: str = '/downloads'
-    mapping_path: str = '/downloads'
+    download_path: str = Field(default_factory=lambda: _default_media_paths["download_path"])
+    mapping_path: str = Field(default_factory=lambda: _default_media_paths["mapping_path"])
     trans_auto: bool = False
     delete_auto: bool = False
     category: Optional[str] = ''
@@ -48,7 +53,8 @@ class SettingCookieCloud(BaseModel):
     password: Optional[str] = None
 
 
-config_path = Path(f'{Path(__file__).cwd()}/config/app.conf')
+# DESKTOP-MODIFIED: runtime config file path
+config_path = get_config_path()
 
 
 class Setting(BaseModel):

@@ -4,13 +4,16 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.models import Base, User
 from app.middleware.requestvars import g
+from app.utils.paths import get_data_dir, get_db_path
 from app.utils.security import get_password_hash
 
-db_path = Path(f'{Path(__file__).cwd()}/config')
-if not db_path.exists():
-    db_path.mkdir()
+# DESKTOP-MODIFIED: centralize data-dir resolution via app.utils.paths
+data_dir = get_data_dir()
+if not data_dir.exists():
+    data_dir.mkdir(parents=True, exist_ok=True)
 
-engine = create_engine(f'sqlite:///{db_path}/app.db',
+db_file = get_db_path()
+engine = create_engine(f'sqlite:///{db_file.as_posix()}',
                        pool_pre_ping=True,
                        echo=False,
                        poolclass=QueuePool,

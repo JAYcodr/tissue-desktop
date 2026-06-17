@@ -2,7 +2,14 @@ import os.path
 import hashlib
 from pathlib import Path
 
-cache_path = Path(f'{Path(__file__).cwd()}/config/cache')
+from app.utils.paths import get_cache_dir, get_data_dir
+
+# DESKTOP-MODIFIED: cache lives in the runtime data dir
+data_dir = get_data_dir()
+if not data_dir.exists():
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+cache_path = get_cache_dir()
 
 
 def get_cache_path(parent: str, path: str):

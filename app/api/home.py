@@ -9,6 +9,7 @@ from app import schema
 from app.schema.home import SiteVideo
 from app.schema.r import R
 from app.service.spider import get_spider_service
+from app.utils.paths import get_log_path
 
 router = APIRouter()
 
@@ -35,7 +36,8 @@ def get_actor_videos(site_id: int, code: str, page: int = 1, service=Depends(get
 
 @router.get('/log')
 async def get_logs():
-    log_path = Path(f'{Path(__file__).cwd()}/config/app.log')
+    # DESKTOP-MODIFIED: resolve log path via shared helper
+    log_path = get_log_path()
 
     def log_generator():
         with open(log_path, 'r', encoding='utf-8') as f:

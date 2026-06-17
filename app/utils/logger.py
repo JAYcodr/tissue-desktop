@@ -6,6 +6,8 @@ from typing import Dict, Any
 
 import click
 
+from app.utils.paths import get_data_dir, get_log_path
+
 # 日志级别颜色
 level_name_colors = {
     logging.DEBUG: lambda level_name: click.style(str(level_name), fg="cyan"),
@@ -28,7 +30,11 @@ class CustomFormatter(logging.Formatter):
 class LoggerManager:
 
     def __init__(self):
-        log_path = Path(f'{Path(__file__).cwd()}/config/app.log')
+        # DESKTOP-MODIFIED: use shared path helper so logs live in the desktop data dir
+        data_dir = get_data_dir()
+        if not data_dir.exists():
+            data_dir.mkdir(parents=True, exist_ok=True)
+        log_path = get_log_path()
 
         self.logger = logging.getLogger(log_path.stem)
         self.logger.setLevel(logging.INFO)
