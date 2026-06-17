@@ -24,9 +24,10 @@ module.exports = {
     },
   ],
   asarUnpack: ['dist-electron/preload/**/*'],
-  // DESKTOP-MODIFIED: disable auto-publishing to GitHub Releases. Artifacts are
-  // uploaded via the GitHub Actions upload-artifact step instead.
-  publish: null,
+  publish: {
+    provider: 'github',
+    releaseType: 'draft',
+  },
   mac: {
     target: ['dmg', 'zip'],
     category: 'public.app-category.entertainment',
