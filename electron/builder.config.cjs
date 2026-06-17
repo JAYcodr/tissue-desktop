@@ -33,6 +33,11 @@ module.exports = {
     target: ['nsis', 'portable'],
     icon: 'electron/resources/icon.png',
   },
+  linux: {
+    target: ['AppImage', 'deb'],
+    category: 'AudioVideo',
+    icon: 'electron/resources/icon.png',
+  },
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,

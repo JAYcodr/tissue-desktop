@@ -18,11 +18,9 @@ on:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # DESKTOP-MODIFIED: Gitea 侧可用 runner 标签为 ubuntu-latest / ubuntu-22.04 / ubuntu-20.04，
+    # 为兼容大包构建需求，统一使用 ubuntu-latest。Ubuntu runner 仅可构建 Linux 安装包。
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,21 +40,22 @@ jobs:
         shell: bash
         run: |
           python -m venv .venv
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            .venv/Scripts/python -m pip install -r requirements.txt pyinstaller
-          else
-            .venv/bin/python -m pip install -r requirements.txt pyinstaller
-          fi
+          .venv/bin/python -m pip install -r requirements.txt pyinstaller
 
       - name: Install Node dependencies
         run: npm install
 
       - name: Build desktop artifacts
-        run: npm run build
+        shell: bash
+        run: |
+          npm run build:frontend
+          npm run build:electron
+          npm run build:backend
+          npx electron-builder --config electron/builder.config.cjs --linux
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tissue-desktop-${{ matrix.os }}
+          name: tissue-desktop-linux
           path: release/
           if-no-files-found: error
