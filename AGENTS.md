@@ -1,59 +1,26 @@
-# Agent Guide (tissue)
+# Agent Guide (Tissue Desktop)
 
-This repo is a FastAPI + SQLite backend with a Vite/React frontend. In Docker, Nginx serves the built frontend and reverse-proxies `/api/*` to the backend.
+> 本仓库是 [tissue](https://github.com/chris-2s/tissue) 的 Electron 桌面版。核心目标：**复用上游前后端代码，只做最小桌面化改造**，避免上游更新后难以合并。
+
+This repo is a FastAPI + SQLite backend with a Vite/React frontend, wrapped in Electron for desktop use.
 
 ## Repo Map
 
-- `app/`: FastAPI backend
+- `app/`: FastAPI backend (mostly unchanged from upstream)
 - `alembic/`, `alembic.ini`: DB migrations (SQLite by default)
-- `config/`: runtime data (SQLite DB, logs) created at runtime
-- `nginx/app.conf`: serves `/app/dist` and proxies `/api/*` -> `127.0.0.1:8000`
-- `frontend/`: Vite + React + TS + Ant Design UI
-- `dist/`: built frontend output copied here for Docker/Nginx (treat as generated)
-- `electron/`: Electron main process, preload script, and builder config (desktop only)
+- `frontend/`: Vite + React + TS + Ant Design UI (mostly unchanged from upstream)
+- `electron/`: Electron main process, preload script, and builder configuration
+- `scripts/`: build helpers, e.g. `build-backend.py` for PyInstaller
+- `release/`: packaged Electron installers (treat as generated)
 - `dist-electron/`: compiled Electron output (treat as generated)
 - `backend_dist/`: PyInstaller-built backend executable (treat as generated)
-- `release/`: packaged Electron installers (treat as generated)
-- `scripts/`: build helpers, e.g. `build-backend.py` for PyInstaller
+- `nginx/`, `Dockerfile`, `entrypoint`: inherited from upstream, not used in desktop builds
 
 ## Build / Lint / Test Commands
 
-### Backend (Python)
+### Desktop (Electron + Python sidecar)
 
-Python deps are pinned in `requirements.txt`. There is no dedicated lint/test tool configured in this repo (no `pyproject.toml`, `ruff`, `black`, `pytest`, etc.).
-
-- Install deps (local dev)
-  - `python -m venv .venv && source .venv/bin/activate`
-  - `pip install -r requirements.txt`
-
-- Run API server (local dev)
-  - `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
-
-- DB migrations
-  - Apply latest: `alembic upgrade head`
-  - Create revision (manual edits likely needed): `alembic revision -m "message"`
-  - Autogenerate (requires models importable): `alembic revision --autogenerate -m "message"`
-
-- Basic “does it run” checks (since no linter/test suite is present)
-  - Import/bytecode sanity: `python -m compileall app`
-
-### Frontend (Vite + React)
-
-From `frontend/`:
-
-- Install: `npm install`
-- Dev server: `npm run dev`
-- Typecheck + build (Docker mode): `npm run build`
-- Typecheck + build (Desktop mode): `npm run build:desktop`
-- Lint: `npm run lint`
-
-CI/Docker build (matches `.github/workflows/build*.yml`):
-
-- `cd frontend && npm install && CI=false npm run build && cp -r ./dist ../dist`
-
-### Desktop (Electron)
-
-From repo root:
+From repository root:
 
 - Install all deps: `npm install` (uses npm workspaces; installs frontend deps too)
 - Dev mode: `npm run dev`
@@ -82,23 +49,33 @@ The renderer uses `frontend/src/configs/desktop.ts` when Vite runs with `--mode 
 The desktop config reads the backend URL from `window.electronAPI.backendUrl`, which already
 includes the `/api` prefix because `app.desktop_main.py` mounts all backend routes under `/api`.
 
-### Docker (full app)
+### Backend (Python)
 
-- Build image: `docker build -t tissue:local .`
-- Run container (example from `README.md`):
+Python deps are pinned in `requirements.txt`.
 
-```bash
-docker run -d --name=tissue \
-  -e TZ="Asia/Shanghai" \
-  -p '9193:9193' \
-  -v '/path/for/config':'/app/config' \
-  -v '/path/for/video':'/data/video' \
-  -v '/path/for/file':'/data/file' \
-  -v '/path/for/downloads':'/downloads' \
-  tissue:local
-```
+- Install deps (local dev)
+  - `python -m venv .venv && source .venv/bin/activate`
+  - `pip install -r requirements.txt`
 
-Runtime entrypoint (see `entrypoint`): starts Nginx, runs `alembic upgrade head`, then runs Uvicorn on port 8000.
+- Run API server (local dev, desktop mode)
+  - `uvicorn app.desktop_main:app --reload --host 127.0.0.1 --port 8000`
+
+- DB migrations
+  - Apply latest: `alembic upgrade head`
+  - Create revision (manual edits likely needed): `alembic revision -m "message"`
+
+- Basic “does it run” checks (since no linter/test suite is present)
+  - Import/bytecode sanity: `python -m compileall app`
+
+### Frontend (Vite + React)
+
+From `frontend/`:
+
+- Install: `npm install`
+- Dev server: `npm run dev`
+- Typecheck + build (Docker mode): `npm run build`
+- Typecheck + build (Desktop mode): `npm run build:desktop`
+- Lint: `npm run lint`
 
 ### Tests (and running a single test)
 
@@ -116,10 +93,21 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 
 ### General
 
+- **Do not break upstream**: prefer adding new files over editing files inherited from upstream.
+- When you must edit an upstream file, add a comment marker:
+  - Python: `# DESKTOP-MODIFIED: <reason>`
+  - TypeScript/TSX: `// DESKTOP-MODIFIED: <reason>`
 - Keep changes scoped: don’t hand-edit generated artifacts (notably `dist/`, `frontend/dist/`, `dist-electron/`, `backend_dist/`, and `release/`).
 - Prefer small, reviewable diffs; avoid drive-by reformatting.
-- Avoid committing secrets. This repo currently contains hard-coded secrets/defaults (e.g. JWT secret and default admin password); do not add more.
-- When modifying an existing file for desktop needs, add `// DESKTOP-MODIFIED: <reason>` near the change.
+- Avoid committing secrets. This repo currently contains hard-coded secrets/defaults inherited from upstream (e.g. JWT secret and default admin password); do not add more.
+
+### Path and config (desktop)
+
+- Desktop runtime data (SQLite DB, logs, config) lives in the user app data directory:
+  - macOS: `~/Library/Application Support/tissue-desktop/`
+  - Windows: `%APPDATA%/tissue-desktop/`
+- The backend sidecar binds to `127.0.0.1` on a dynamic free port.
+- The frontend gets the backend URL via `window.electronAPI.getBackendUrl()` exposed in `electron/preload/`.
 
 ### Python (FastAPI backend)
 
