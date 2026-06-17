@@ -13,12 +13,16 @@ import {
     VideoCameraOutlined,
     GlobalOutlined,
 } from "@ant-design/icons";
-import {createRouter} from "@tanstack/react-router";
+import {createHashHistory, createRouter} from "@tanstack/react-router";
 import {routeTree} from "./routeTree.gen.ts";
+
+// DESKTOP-MODIFIED: 桌面生产环境从 file:// 加载，使用 hash history 避免路径解析问题
+const history = import.meta.env.MODE === 'desktop' ? createHashHistory() : undefined;
 
 export const router = createRouter({
     routeTree,
-    scrollRestoration: true
+    scrollRestoration: true,
+    history,
 })
 
 declare module '@tanstack/react-router' {

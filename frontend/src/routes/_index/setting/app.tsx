@@ -2,6 +2,7 @@ import {Button, Form, Input, InputNumber, message, Skeleton} from "antd";
 import * as api from "../../../apis/setting.ts";
 import {useRequest} from "ahooks";
 import {createFileRoute} from "@tanstack/react-router";
+import DirectoryInput from "../../../components/DirectoryInput"; // DESKTOP-MODIFIED: 引入目录选择组件
 
 
 export const Route = createFileRoute('/_index/setting/app')({
@@ -36,7 +37,7 @@ function SettingApp() {
             <div className={'w-[600px] max-w-full my-0 mx-auto'}>
                 <Form layout={'vertical'} form={form} onFinish={onFinish}>
                     <Form.Item label={'视频路径'} name={'video_path'}>
-                        <Input/>
+                        <DirectoryInput/> {/* DESKTOP-MODIFIED: 支持桌面目录选择 */}
                     </Form.Item>
                     <Form.Item label={'视频格式'} name={'video_format'}>
                         <Input/>
