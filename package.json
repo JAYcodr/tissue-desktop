@@ -12,7 +12,7 @@
     "dev": "npm run build:electron && concurrently \"npm run dev:frontend\" \"npm run watch:electron\" \"npm run start:electron:dev\"",
     "dev:frontend": "cd frontend && npm run dev -- --mode desktop",
     "watch:electron": "tsc --watch",
-    "start:electron:dev": "wait-on tcp:127.0.0.1:5173 && cross-env NODE_ENV=development electron .",
+    "start:electron:dev": "wait-on file:./frontend/.dev-server-port && cross-env NODE_ENV=development electron .",
     "build:electron": "tsc",
     "build:frontend": "cd frontend && npm run build:desktop",
     "build:backend": "node scripts/build-backend.js",

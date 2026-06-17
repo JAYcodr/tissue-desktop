@@ -967,6 +967,11 @@ backend_dist/
 build/pyinstaller/
 scripts/.pyinstaller_entrypoint.py
 .eslintcache
+
+# Vite dev server writes the actual bound port here at startup; see
+# frontend/vite.config.ts (writeDevServerPort plugin) and
+# electron/main/index.ts (getDevServerPort).
+frontend/.dev-server-port
 node_modules/
 .venv/
 .venv-builder/

@@ -6,6 +6,14 @@ import net from 'net';
 
 const SHUTDOWN_GRACE_MS = 3000;
 
+// DESKTOP-MODIFIED: Vite's dev server defaults to 5173 and frequently
+// collides with other dev servers. Vite is configured with 5273 as the
+// primary port (strictPort:false auto-increments on conflict) and writes
+// the actual bound port to frontend/.dev-server-port. We read that file
+// here to construct the dev URL dynamically.
+const DEV_PORT_FALLBACK = 5273;
+const DEV_PORT_FILE = 'frontend/.dev-server-port';
+
 const isDev = !app.isPackaged;
 let backendProcess: ChildProcess | null = null;
 let backendUrl = '';
@@ -24,6 +32,23 @@ function getProjectRoot(): string {
     return process.cwd();
   }
   return process.resourcesPath;
+}
+
+function getDevServerPort(): number {
+  const portFile = path.join(getProjectRoot(), DEV_PORT_FILE);
+  try {
+    const raw = fs.readFileSync(portFile, 'utf8').trim();
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) {
+      return parsed;
+    }
+    console.warn(`[electron] invalid dev server port in ${portFile}: ${raw}`);
+  } catch {
+    // File may not exist yet (Vite not started, or production build).
+    // Fall through to the default — Electron's loadURL will then surface
+    // a clear "site can't be reached" error if Vite really isn't running.
+  }
+  return DEV_PORT_FALLBACK;
 }
 
 function getPythonCommand(projectRoot: string): string {
@@ -226,6 +251,8 @@ function registerIpcHandlers(): void {
 }
 
 async function createWindow(): Promise<void> {
+  const devServerUrl = isDev ? `http://localhost:${getDevServerPort()}` : '';
+
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -252,7 +279,7 @@ async function createWindow(): Promise<void> {
   // the dev server / file:// origin and forward everything else to the OS
   // browser so a compromised renderer can't drag the user to a phishing page.
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowedOrigin = isDev ? 'http://localhost:5173' : 'file://';
+    const allowedOrigin = isDev ? devServerUrl : 'file://';
     if (!url.startsWith(allowedOrigin)) {
       event.preventDefault();
       shell.openExternal(url).catch((error) => {
@@ -268,7 +295,7 @@ async function createWindow(): Promise<void> {
   });
 
   if (isDev) {
-    await mainWindow.loadURL('http://localhost:5173');
+    await mainWindow.loadURL(devServerUrl);
     mainWindow.webContents.openDevTools();
   } else {
     await mainWindow.loadFile(path.join(__dirname, '../../frontend/dist/index.html'));
