@@ -192,6 +192,48 @@
   - `npm run dev`：同时启动后端 sidecar、Vite dev server 和 Electron。
   - `npm run build`：构建前端 + Electron + PyInstaller 后端 + 打包。
 
+### 7.6 第二轮加固：Electron 壳健壮性 + 端口冲突处理 + Release 流程改造（2026-06-17/18）
+
+**Electron 壳 P0/P1 修复**（`electron/main/index.ts`）：
+
+1. **`waitForBackendEnd` 竞态**：原实现把 `backendUrl` 在函数入口捕获，但 `startBackend()` 在 `backendStarting = true` 之后才更新 `backendUrl`，并发调用方会轮询过期/空 URL。重命名为 `waitForBackendReady`，循环内重新读取 `backendUrl`。
+2. **Windows 后端无法优雅退出**：Node 在 Windows 上把 `process.kill('SIGTERM')` 映射为 `TerminateProcess`，后端拿不到关闭钩子。`stopBackend` 先发 SIGTERM 留 3s 优雅窗口，超时后 Windows 走 `taskkill /pid /T /F` 杀进程树，Unix 走 `SIGKILL`。
+3. **导航安全**：`will-navigate` 白名单拦截渲染进程顶层导航（`window.location`、`<a href>`），白名单外 URL 走 `shell.openExternal`。
+4. **加载失败日志**：`did-fail-load` 事件输出错误码和 URL，避免空白窗口。
+5. **文件选择体验**：`openDirectory` 传 `BrowserWindow.fromWebContents(event.sender)` 锚定父窗口，加 `defaultPath: downloads`。
+6. **Promise 拒绝修复**：`shell.openExternal` 在 Electron 31 返回 `Promise<void>`，补 `.catch` 处理 URL 无效/无默认应用的情况。
+
+**Vite dev 端口冲突处理**：
+
+- Vite 默认 5173 容易撞，改首选端口 `5273`（`strictPort: false`，撞了就 5274/5275/...）。
+- 自定义 `tissue-write-dev-server-port` 插件，在 `httpServer 'listening'` 事件里把实际端口写入 `frontend/.dev-server-port`。
+- Electron `getDevServerPort()` 读这个文件，校验端口范围后用于 `loadURL` 和 `will-navigate` 白名单，缺文件/格式错误时回退 5273。
+- `wait-on` 从 `tcp:127.0.0.1:5173` 改成 `file:./frontend/.dev-server-port`，避免在错误端口上无限等待。
+- `.gitignore` 加 `frontend/.dev-server-port`。
+
+**版本源统一**：
+
+- `version.py`（`v1.11.3`）与 `package.json`（`1.0.0`）长期不一致，Electron 打包与 Python 后端对不上号。
+- 新增 `scripts/sync-version.js`：以 `package.json` 的 `version` 为权威，生成 `APP_VERSION = 'vX.Y.Z'` 写入 `version.py`（保留 `v` 前缀，`app/api/common.py` 的版本比对逻辑依赖它）。
+- `sync:version` 接入 `npm run dev` 和 `npm run build` 链首。
+- `version.py` 加入 `.gitignore`，`git rm --cached` 解绑（生成文件）。
+- `package.json` version `1.0.0 → 1.0.1`。
+- `electron/builder.config.cjs` 显式同步 `version` / `buildVersion` 到 `pkg.version`（避免 electron-builder 回退到 major version）。
+
+**Release 流程改造**：
+
+- `electron/builder.config.cjs` 的 `publish.releaseType` 从 `draft` 改为 `release`。原配置与已存在的 v1.0.0（type=release）不兼容，electron-builder 会**静默跳过**所有资产上传——CI 显示 success 但 release 不更新。
+- 新增 `.github/workflows/check-version.yml`：PR 改了 release-relevant 文件但 `package.json` 的 `version` 没 bump → 失败，给出明确错误信息。要求发版前必须手动 bump。
+
+**本轮提交**：
+
+| Commit | 说明 |
+|---|---|
+| `f5686ca` | 修复并发启动后端返回过期 URL + Windows 进程无法优雅退出 |
+| `f5ef1b9` | Electron 壳加固：导航安全 + 加载失败日志 + 文件选择体验 |
+| `e1f2def` | Vite dev 端口冲突处理：动态探测代替硬编码 5173 |
+| `0fe2ce4` | 统一版本源 + release 流程改造 |
+
 ---
 
 ## 8. Spec 追溯记录
@@ -203,3 +245,6 @@
 | 2026-06-17 | 完成前端桌面化适配 | Kimi-CLI | agent/kimi/frontend-desktop |
 | 2026-06-17 | 完成 PyInstaller 打包与 CI | Kimi-CLI | agent/kimi/packaging |
 | 2026-06-17 | 迁移代码托管到 GitHub，README 明确项目来源 | Kimi-CLI | main |
+| 2026-06-18 | Electron 壳 P0/P1 健壮性修复（竞态、进程退出、导航安全、加载日志、文件选择、Promise 拒绝） | Claude-Code | fix/electron-shell-p0-bugs（已合 main） |
+| 2026-06-18 | Vite dev 端口冲突处理（首选 5273 + 端口探测 + wait-on 等文件） | Claude-Code | fix/electron-shell-p0-bugs（已合 main） |
+| 2026-06-18 | 统一版本源（package.json 权威 + sync-version.js）+ release 流程改造（draft→release + check-version CI） | Claude-Code | main（0fe2ce4） |
