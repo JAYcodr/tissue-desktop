@@ -208,10 +208,19 @@ function registerIpcHandlers(): void {
   });
   ipcMain.handle('get-backend-url', () => backendUrl);
   ipcMain.handle('get-user-data-path', () => getUserDataDir());
-  ipcMain.handle('open-directory', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-    });
+  ipcMain.handle('open-directory', async (event) => {
+    // Anchor the dialog to the requesting window on macOS so it sheets
+    // correctly instead of floating detached. `dialog.showOpenDialog` has
+    // two overloads (with/without BrowserWindow) and rejects undefined,
+    // so we branch on the resolved owner.
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    const options = {
+      properties: ['openDirectory'] as Array<'openDirectory'>,
+      defaultPath: app.getPath('downloads'),
+    };
+    const result = owner
+      ? await dialog.showOpenDialog(owner, options)
+      : await dialog.showOpenDialog(options);
     return result.filePaths[0];
   });
 }
@@ -229,8 +238,33 @@ async function createWindow(): Promise<void> {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    // shell.openExternal returns a Promise; swallow rejection (e.g. no
+    // default app for the scheme) so we don't trigger unhandled-rejection
+    // warnings.
+    shell.openExternal(url).catch((error) => {
+      console.error(`[shell] failed to open external URL ${url}:`, error);
+    });
     return { action: 'deny' };
+  });
+
+  // setWindowOpenHandler only intercepts window.open; the renderer can still
+  // trigger top-level navigation via window.location or <a href>. Whitelist
+  // the dev server / file:// origin and forward everything else to the OS
+  // browser so a compromised renderer can't drag the user to a phishing page.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const allowedOrigin = isDev ? 'http://localhost:5173' : 'file://';
+    if (!url.startsWith(allowedOrigin)) {
+      event.preventDefault();
+      shell.openExternal(url).catch((error) => {
+        console.error(`[shell] failed to open external URL ${url}:`, error);
+      });
+    }
+  });
+
+  // log render-process load failures (dev server down, missing dist, CSP
+  // violation, etc.) so they don't manifest as a silent blank window.
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[renderer] failed to load ${validatedURL}: ${errorCode} ${errorDescription}`);
   });
 
   if (isDev) {
