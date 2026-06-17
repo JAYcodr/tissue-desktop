@@ -2,8 +2,9 @@
  * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: 'com.yourcompany.tissue-desktop',
+  appId: 'com.tissue.desktop',
   productName: 'Tissue Desktop',
+  copyright: 'Copyright © 2026 Tissue Desktop Contributors',
   directories: {
     output: 'release',
     buildResources: 'electron/resources',
@@ -11,25 +12,29 @@ module.exports = {
   files: [
     'dist-electron/**/*',
     'frontend/dist/**/*',
-    'app/**/*',
-    'alembic/**/*',
-    'alembic.ini',
-    'requirements.txt',
+    'package.json',
   ],
-  // Python source must live outside the asar so the system Python interpreter can reach it.
-  // This duplicates the backend files intentionally until we bundle a Python runtime.
+  // DESKTOP-MODIFIED: ship the PyInstaller-built backend executable as an extra
+  // resource so it lives outside the asar and can be spawned by the main process.
   extraResources: [
-    { from: 'app', to: 'app' },
-    { from: 'alembic', to: 'alembic' },
-    { from: 'alembic.ini', to: 'alembic.ini' },
-    { from: 'requirements.txt', to: 'requirements.txt' },
+    {
+      from: 'backend_dist',
+      to: 'backend',
+      filter: ['tissue-backend', 'tissue-backend.exe'],
+    },
   ],
   asarUnpack: ['dist-electron/preload/**/*'],
   mac: {
     target: ['dmg', 'zip'],
     category: 'public.app-category.entertainment',
+    icon: 'electron/resources/icon.png',
   },
   win: {
     target: ['nsis', 'portable'],
+    icon: 'electron/resources/icon.png',
+  },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true,
   },
 };

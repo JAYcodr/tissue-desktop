@@ -12,7 +12,9 @@ This repo is a FastAPI + SQLite backend with a Vite/React frontend. In Docker, N
 - `dist/`: built frontend output copied here for Docker/Nginx (treat as generated)
 - `electron/`: Electron main process, preload script, and builder config (desktop only)
 - `dist-electron/`: compiled Electron output (treat as generated)
+- `backend_dist/`: PyInstaller-built backend executable (treat as generated)
 - `release/`: packaged Electron installers (treat as generated)
+- `scripts/`: build helpers, e.g. `build-backend.py` for PyInstaller
 
 ## Build / Lint / Test Commands
 
@@ -56,12 +58,20 @@ From repo root:
 - Install all deps: `npm install` (uses npm workspaces; installs frontend deps too)
 - Dev mode: `npm run dev`
 - Build frontend for desktop: `npm run build:frontend`
+- Build Electron main/preload: `npm run build:electron`
+- Build PyInstaller backend bundle: `npm run build:backend`
 - Build + package Electron: `npm run build`
 - Lint: `npm run lint`
 
+The full `npm run build` pipeline:
+1. Builds the frontend in desktop mode (`frontend/dist/`).
+2. Compiles the Electron main/preload scripts (`dist-electron/`).
+3. Runs PyInstaller to produce `backend_dist/tissue-backend` (or `.exe`).
+4. Runs `electron-builder` and writes installers to `release/`.
+
 The Electron main process (`electron/main/index.ts`) is responsible for:
 
-- Starting the Python sidecar (`app.desktop_main:app`) on a free port.
+- Starting the Python sidecar (`app.desktop_main:app` in dev, `backend_dist/tissue-backend` in production) on a free port.
 - Setting `TISSUE_DESKTOP=1`, `TISSUE_DESKTOP_DATA_DIR`, and `TISSUE_DESKTOP_PORT`.
 - Waiting for `/api/common/health` before showing the window.
 - Providing IPC channels: `get-backend-url`, `get-user-data-path`, `open-directory`.
@@ -106,7 +116,7 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 
 ### General
 
-- Keep changes scoped: don’t hand-edit generated artifacts (notably `dist/`, `frontend/dist/`, `dist-electron/`, and `release/`).
+- Keep changes scoped: don’t hand-edit generated artifacts (notably `dist/`, `frontend/dist/`, `dist-electron/`, `backend_dist/`, and `release/`).
 - Prefer small, reviewable diffs; avoid drive-by reformatting.
 - Avoid committing secrets. This repo currently contains hard-coded secrets/defaults (e.g. JWT secret and default admin password); do not add more.
 - When modifying an existing file for desktop needs, add `// DESKTOP-MODIFIED: <reason>` near the change.
@@ -210,7 +220,8 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 
 - Root `tsconfig.json` compiles `electron/**/*.ts` into `dist-electron/`.
 - `npm run build:electron` runs `tsc`.
-- `electron-builder` packages `dist-electron/`, `frontend/dist/`, and the Python backend files.
+- `npm run build:backend` runs `scripts/build-backend.py` (PyInstaller).
+- `electron-builder` packages `dist-electron/`, `frontend/dist/`, and `backend_dist/tissue-backend*` via `extraResources`.
 
 ## Cursor / Copilot Rules
 
