@@ -52,6 +52,11 @@ jobs:
         run: npm install
 
       - name: Build desktop artifacts
+        # DESKTOP-MODIFIED: pass GITHUB_TOKEN so electron-builder can publish
+        # to GitHub Releases when publish is enabled in electron/builder.config.cjs.
+        # Currently publish: null, so the token is unused but ready for future use.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
 
       - name: Upload release artifacts
