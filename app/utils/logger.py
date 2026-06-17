@@ -31,9 +31,7 @@ class LoggerManager:
 
     def __init__(self):
         # DESKTOP-MODIFIED: use shared path helper so logs live in the desktop data dir
-        data_dir = get_data_dir()
-        if not data_dir.exists():
-            data_dir.mkdir(parents=True, exist_ok=True)
+        # get_data_dir() already ensures the directory exists, no need to mkdir again.
         log_path = get_log_path()
 
         self.logger = logging.getLogger(log_path.stem)

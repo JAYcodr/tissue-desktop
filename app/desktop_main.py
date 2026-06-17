@@ -64,18 +64,15 @@ def _run_alembic() -> None:
     logger.info(f"desktop_main: alembic upgrade head completed, db={db_file}")
 
 
-# Apply migrations before uvicorn starts so that the DB tables exist when the
-# app's own startup handler runs.
-_run_alembic()
-
-
 @app.on_event("startup")
 def _desktop_startup() -> None:
     # Re-run migrations on every startup to catch any runtime config changes.
     _run_alembic()
 
 
-@app.get("/api/common/health")
+_API_PREFIX = os.environ.get("TISSUE_API_PREFIX", "")
+
+@app.get(f"{_API_PREFIX}/common/health")
 def _health() -> dict:
     return {"status": "ok"}
 

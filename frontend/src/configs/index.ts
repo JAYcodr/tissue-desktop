@@ -15,4 +15,11 @@ const configs: { [key: string]: ConfigProperties } = {
     desktop, // DESKTOP-MODIFIED: 注册桌面模式
 }
 
-export default configs[mode]
+// DESKTOP-MODIFIED: fail fast when build mode is unknown; prevents a silent
+// undefined from propagating into every API call.
+const config = configs[mode];
+if (!config) {
+    throw new Error(`[config] unknown build mode: ${mode}`);
+}
+
+export default config

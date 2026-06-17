@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import {tanstackRouter} from '@tanstack/router-plugin/vite'
 import tailwindcss from "@tailwindcss/vite";
 import fs from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // DESKTOP-MODIFIED: Vite's default 5173 is widely used and frequently
 // collides with other dev servers. We pin 5273 as a less-collision-prone
@@ -11,7 +13,10 @@ import fs from 'node:fs'
 // .dev-server-port so the Electron main process can discover the URL
 // dynamically (see electron/main/index.ts).
 const DEV_PORT_PRIMARY = 5273
-const DEV_PORT_FILE = '.dev-server-port'
+// DESKTOP-MODIFIED: resolve path relative to vite.config.ts itself using
+// import.meta.url so the file is written in the correct place regardless of
+// the process cwd (e.g. when Vite is invoked from the repo root).
+const DEV_PORT_FILE = resolve(fileURLToPath(import.meta.url), '..', '.dev-server-port')
 
 function writeDevServerPort(): PluginOption {
     return {

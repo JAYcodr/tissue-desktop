@@ -215,3 +215,175 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 
 - No Cursor rules found (`.cursor/rules/` or `.cursorrules` not present).
 - No GitHub Copilot instructions found (`.github/copilot-instructions.md` not present).
+
+---
+
+## Project Standards (2026-06-18)
+
+> 本章节替代并补充 `Code Style / Conventions` 中未覆盖的执行细节。规范中的反例和修复均来自实际代码审查中发现的真问题，不是模板。
+> 独立参考文件：`docs/standards/release-workflow.md`、`docs/standards/code-style.md`。
+
+---
+
+### 1. 发版工作流
+
+#### 1.1 版本号唯一权威源
+
+`package.json` 的 `version` 字段是**唯一可信版本号**。`version.py` 由 `scripts/sync-version.js` 自动生成，**不提交到 Git**（已入 `.gitignore`）。
+
+发版 PR 前必须手动 bump `package.json` 版本（如 `1.0.1` → `1.0.2`），然后运行 `npm run sync:version` 生成 `version.py`。
+
+#### 1.2 PR 拦截
+
+`.github/workflows/check-version.yml` 在 PR 时检查：若修改了 release-relevant 文件但 `package.json` 的 `version` 未 bump → CI 失败，报错 `"发版前必须手动 bump package.json 版本号"`。
+
+release-relevant 文件范围：`electron/**`、`app/**`、`frontend/**`、`requirements.txt`、`package.json`（version 本身）、`scripts/**`、`.github/workflows/build-desktop.yml`。
+
+#### 1.3 合并后自动发布
+
+合并到 `main` 后 CI 自动构建并发布到 GitHub Releases。`electron/builder.config.cjs` 中的 `publish.releaseType` 必须是 `release`（不是 `draft`），因为 `draft` 类型会导致 electron-builder 对同名 version **静默跳过资产上传**。
+
+同名 version 已存在时，electron-builder 会自动删除旧资产并上传新资产。建议每次严格 bump 版本号，避免覆盖。
+
+---
+
+### 2. 代码执行规范（新增）
+
+#### 2.1 禁止模块级初始化依赖外部状态
+
+模块 `import` 时不得执行以下操作：文件系统操作（`mkdir`、`writeFile`）、环境变量读取（`os.environ.get()`）、网络请求、数据库连接。这些操作必须延迟到**函数调用时**。
+
+**反例**（`app/utils/cache.py` 模块导入时）：
+```python
+# 错误：import 时立即依赖环境变量，如果 import 顺序变化行为即变
+data_dir = get_data_dir()
+if not data_dir.exists():
+    data_dir.mkdir(parents=True, exist_ok=True)
+cache_path = get_cache_dir()
+```
+
+**修复**：
+```python
+# 延迟到函数调用时读取
+def _ensure_cache_dir() -> Path:
+    data_dir = get_data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return get_cache_dir()
+
+def get_cache_path(parent: str, path: str) -> str:
+    cache_path = _ensure_cache_dir()
+    ...
+```
+
+白名单：纯常量定义、不依赖外部状态的类型声明可以在模块级定义。
+
+#### 2.2 禁止静默回退到硬编码值
+
+配置项如果依赖 IPC/环境变量读取，**不可以用 `||` 静默回退**到硬编码值。静默回退会让启动失败时的调试变得极其困难。
+
+**反例**（`frontend/src/configs/desktop.ts`）：
+```ts
+// 错误：backendUrl 为 undefined 时回退到错误的 8000 端口
+BASE_API: window.electronAPI?.backendUrl || "http://127.0.0.1:8000/api"
+```
+
+**修复**：
+```ts
+const api = window.electronAPI?.backendUrl;
+if (!api) {
+    throw new Error("[desktop] backendUrl not available from preload");
+}
+const config: ConfigProperties = { BASE_API: api };
+```
+
+#### 2.3 禁止宽泛 `catch`
+
+`except Exception:` 和 `catch (error)` 捕获了不该处理的异常（如 `KeyboardInterrupt`、`SystemExit`、权限错误），掩盖真正问题。
+
+**反例**（`scripts/build-backend.py`）：
+```python
+except Exception:  # 捕获了 ImportError、PermissionError、KeyboardInterrupt
+    print("PyInstaller not found, installing...")
+```
+
+**修复**：
+```python
+except (ImportError, ModuleNotFoundError):
+    print("PyInstaller not found, installing...")
+```
+
+TypeScript 中同样：Promise 拒绝必须 `.catch` 并记录，禁止空 `catch` 块。
+
+#### 2.4 路径计算使用 `__dirname` / `__file__`
+
+禁止依赖 `process.cwd()` 或相对路径计算文件位置。脚本运行目录变化时 cwd 会漂移。
+
+**反例**（`frontend/vite.config.ts`）：
+```ts
+fs.writeFileSync('.dev-server-port', String(addr.port));  // 依赖 cwd
+```
+
+**修复**（ESM 文件使用 `import.meta.url`，非 `__dirname`）：
+```ts
+import { resolve } from 'node:path';
+const DEV_PORT_FILE = resolve(new URL('.', import.meta.url).pathname, '.dev-server-port');
+fs.writeFileSync(DEV_PORT_FILE, String(addr.port));
+```
+
+#### 2.5 类型安全防御
+
+导出的配置对象必须验证 key 存在，防止 mode 拼写错误导致 `undefined` 穿透。
+
+**反例**（`frontend/src/configs/index.ts`）：
+```ts
+export default configs[mode];  // mode 拼写错误时返回 undefined
+```
+
+**修复**：
+```ts
+const config = configs[mode];
+if (!config) {
+    throw new Error(`[config] unknown build mode: ${mode}`);
+}
+export default config;
+```
+
+#### 2.6 日志统一前缀
+
+`console.error` 和 `logger` 必须带前缀区分来源，避免多进程日志混在一起无法追踪。
+
+推荐前缀：`[backend]`（Python sidecar）、`[shell]`（外部程序调用）、`[renderer]`（前端渲染进程）、`[electron]`（主进程）。
+
+```ts
+// 正确
+console.error('[backend] Process exited with code', code);
+console.error('[shell] failed to open external URL:', error);
+
+// 错误（没有前缀，无法区分来源）
+console.error('Failed to start:', error);
+```
+
+#### 2.7 环境变量初始化顺序
+
+所有环境变量**必须在依赖它的模块 import 之前设置完毕**，或者由模块自身负责初始化。
+
+**正确模式**：
+```python
+_bootstrap_desktop_env()  # 先设置 TISSUE_DESKTOP 等环境变量
+from app.main import app as fastapi_app  # 安全：环境变量已就绪
+```
+
+---
+
+### 3. 提交前自检清单
+
+每个 Agent 提交前逐项检查：
+
+- [ ] 对上游文件的修改都加了 `DESKTOP-MODIFIED: <原因>` 注释
+- [ ] 没有模块级文件系统操作（`mkdir`、`writeFile` 等延迟到函数调用）
+- [ ] 没有 `||` 静默回退到硬编码值（特别是 URL、端口）
+- [ ] `catch` 块不是空的，异常要么记录要么重新抛出
+- [ ] `Promise` 拒绝都有 `.catch` 或 `try/await`
+- [ ] 环境变量在依赖它的模块 import 前已设置
+- [ ] 日志有统一前缀（`[backend]`、`[shell]`、`[renderer]`）
+- [ ] 如果是发版相关修改，`package.json` 的 version 已 bump 且 `sync:version` 已运行
