@@ -1,10 +1,18 @@
 /**
  * @type {import('electron-builder').Configuration}
  */
+const pkg = require('../package.json');
+
 module.exports = {
   appId: 'com.tissue.desktop',
   productName: 'Tissue Desktop',
   copyright: 'Copyright © 2026 Tissue Desktop Contributors',
+  // DESKTOP-MODIFIED: keep version + buildVersion in lockstep with the root
+  // package.json (single source of truth, see scripts/sync-version.js).
+  // buildVersion maps to CFBundleVersion on macOS; defaulting to pkg.version
+  // explicitly avoids electron-builder falling back to the major version.
+  version: pkg.version,
+  buildVersion: pkg.version,
   directories: {
     output: 'release',
     buildResources: 'electron/resources',
@@ -26,7 +34,10 @@ module.exports = {
   asarUnpack: ['dist-electron/preload/**/*'],
   publish: {
     provider: 'github',
-    releaseType: 'draft',
+    // DESKTOP-MODIFIED: changed from "draft" to "release" so subsequent builds
+    // at the same version can overwrite existing assets. Pair with the
+    // check-version workflow to require a manual package.json bump per PR.
+    releaseType: 'release',
   },
   mac: {
     target: ['dmg', 'zip'],

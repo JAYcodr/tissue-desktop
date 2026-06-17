@@ -976,3 +976,7 @@ node_modules/
 .venv/
 .venv-builder/
 dist-electron/
+
+# Generated from package.json "version" by scripts/sync-version.js; do not
+# edit by hand. Backend imports it as `from version import APP_VERSION`.
+version.py

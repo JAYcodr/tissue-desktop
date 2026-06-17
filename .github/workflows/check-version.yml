@@ -1,0 +1,52 @@
+name: Check version bump
+
+# DESKTOP-MODIFIED: when a PR changes release-relevant files, package.json
+# "version" must be bumped — otherwise electron-builder would silently
+# overwrite the previous release's assets (we switched publish to "release"
+# in builder.config.cjs, so the same version is allowed to re-publish, but
+# that's only safe if it's intentional). This workflow fails the PR when a
+# bump is missing.
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+      - 'electron/**'
+      - 'app/**'
+      - 'frontend/**'
+      - 'requirements.txt'
+      - 'scripts/**'
+      - '.github/workflows/build-desktop.yml'
+
+jobs:
+  check-version:
+    name: package.json version bumped
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare package.json version against main
+        run: |
+          set -euo pipefail
+          BASE_VERSION="$(jq -r .version <(git show origin/main:package.json))"
+          HEAD_VERSION="$(jq -r .version package.json)"
+          echo "base version: $BASE_VERSION"
+          echo "head version: $HEAD_VERSION"
+
+          if [ "$BASE_VERSION" = "$HEAD_VERSION" ]; then
+            echo "::error::package.json version was not bumped. Bump 'version' (currently $HEAD_VERSION) before merging this PR; otherwise the build will silently overwrite the existing v$HEAD_VERSION release assets."
+            exit 1
+          fi
+
+          # Sanity check: head version must be a valid X.Y.Z.
+          if ! echo "$HEAD_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::package.json version '$HEAD_VERSION' is not exact 'X.Y.Z' (pre-release tags are not supported by the sync-version script)."
+            exit 1
+          fi
+
+          echo "OK: bumped $BASE_VERSION -> $HEAD_VERSION"

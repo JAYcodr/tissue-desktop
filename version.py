@@ -1,1 +1,0 @@
-APP_VERSION = 'v1.11.3'
