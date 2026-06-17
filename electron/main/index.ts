@@ -1,8 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import { spawn, type ChildProcess } from 'child_process';
+import { execFile, spawn, type ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
+
+const SHUTDOWN_GRACE_MS = 3000;
 
 const isDev = !app.isPackaged;
 let backendProcess: ChildProcess | null = null;
@@ -74,7 +76,7 @@ async function startBackend(): Promise<string> {
     return backendUrl;
   }
   if (backendStarting) {
-    return await waitForBackendEnd();
+    return await waitForBackendReady();
   }
   backendStarting = true;
 
@@ -136,16 +138,22 @@ async function startBackend(): Promise<string> {
   }
 }
 
-async function waitForBackendEnd(): Promise<string> {
-  const healthUrl = `${backendUrl}/common/health`;
+async function waitForBackendReady(): Promise<string> {
+  // Re-read backendUrl inside the loop: startBackend() sets
+  // `backendStarting = true` *before* it assigns the new backendUrl, so a
+  // concurrent caller entering this function would otherwise poll a stale or
+  // empty URL until `backendStarting` flips back to false.
   while (backendStarting) {
-    try {
-      const response = await fetch(healthUrl);
-      if (response.ok) {
-        return backendUrl;
+    const currentUrl = backendUrl;
+    if (currentUrl) {
+      try {
+        const response = await fetch(`${currentUrl}/common/health`);
+        if (response.ok) {
+          return currentUrl;
+        }
+      } catch {
+        // Still starting.
       }
-    } catch {
-      // Still starting.
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -153,9 +161,45 @@ async function waitForBackendEnd(): Promise<string> {
 }
 
 function stopBackend(): void {
-  if (backendProcess && !backendProcess.killed) {
-    backendProcess.kill('SIGTERM');
+  if (!backendProcess || backendProcess.killed) {
+    return;
   }
+  const pid = backendProcess.pid;
+  if (!pid) {
+    return;
+  }
+
+  // Try a graceful shutdown first; on Windows, Node maps SIGTERM to a
+  // TerminateProcess call so the backend never gets to run its atexit hooks.
+  // Give it SHUTDOWN_GRACE_MS, then force-kill the process tree.
+  try {
+    backendProcess.kill('SIGTERM');
+  } catch (error) {
+    console.error('[backend] Failed to send SIGTERM:', error);
+  }
+
+  const forceKillTimeout = setTimeout(() => {
+    if (!backendProcess || backendProcess.killed) {
+      return;
+    }
+    if (process.platform === 'win32') {
+      // taskkill /T walks the process tree so we also nuke any workers
+      // Uvicorn may have spawned.
+      execFile('taskkill', ['/pid', String(pid), '/T', '/F'], (error) => {
+        if (error) {
+          console.error('[backend] taskkill failed:', error);
+        }
+      });
+    } else {
+      try {
+        backendProcess.kill('SIGKILL');
+      } catch (error) {
+        console.error('[backend] Failed to send SIGKILL:', error);
+      }
+    }
+  }, SHUTDOWN_GRACE_MS);
+
+  backendProcess.once('exit', () => clearTimeout(forceKillTimeout));
 }
 
 function registerIpcHandlers(): void {
