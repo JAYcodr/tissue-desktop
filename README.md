@@ -66,6 +66,46 @@ docker run \
 
 默认密码：password
 
+### 桌面版（Electron）开发
+
+> 桌面版复用现有 FastAPI 后端与 React 前端，通过 Electron 主进程将后端作为 sidecar 启动。
+
+#### 环境准备
+
+```bash
+# 1. 安装 Node 依赖（ workspaces 会同时安装 frontend 依赖）
+npm install
+
+# 2. 创建 Python 虚拟环境并安装后端依赖
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### 开发模式
+
+```bash
+npm run dev
+```
+
+该命令会：
+1. 编译 Electron 主进程与预加载脚本；
+2. 以 `desktop` 模式启动 Vite 前端开发服务器；
+3. 启动 Electron 并加载 `http://localhost:5173`；
+4. Electron 主进程会自动启动 Python sidecar，分配空闲端口，待 `/api/common/health` 就绪后再显示窗口。
+
+#### 构建
+
+```bash
+# 仅构建前端桌面资源
+npm run build:frontend
+
+# 构建前端 + 打包 Electron（当前平台）
+npm run build
+```
+
+构建产物输出到 `release/`。
+
 ### 额外说明
 
 文件和下载器的转移方式支持复制和移动两种。
@@ -77,7 +117,6 @@ docker run \
 ### Talk is cheap, show me the view
 
 <img width="1685" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/e5707b21-2737-4fb6-839e-a213318eddf3">
-<img width="1685" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/4597df98-87bf-40a6-805f-37dc0b5e02ad">
+<img width="1685" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/4597df88-87bf-40a6-805f-37dc0b5e02ad">
 <img width="1682" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/ac11e3c0-7631-40cb-bef6-7074fe3bbc2f">
-
 

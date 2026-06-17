@@ -75,6 +75,11 @@ def _desktop_startup() -> None:
     _run_alembic()
 
 
+@app.get("/api/common/health")
+def _health() -> dict:
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
 

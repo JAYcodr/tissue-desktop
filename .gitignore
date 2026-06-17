@@ -891,3 +891,11 @@ fabric.properties
 
 .idea
 config
+
+### Tissue Desktop
+release/
+frontend/dist/
+.eslintcache
+node_modules/
+.venv/
+dist-electron/

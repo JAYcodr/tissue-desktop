@@ -1,0 +1,30 @@
+{
+  "name": "tissue-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron desktop wrapper for Tissue (FastAPI + React)",
+  "main": "dist-electron/main/index.js",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run build:electron && concurrently \"npm run dev:frontend\" \"npm run watch:electron\" \"npm run start:electron:dev\"",
+    "dev:frontend": "cd frontend && npm run dev -- --mode desktop",
+    "watch:electron": "tsc --watch",
+    "start:electron:dev": "wait-on tcp:127.0.0.1:5173 && cross-env NODE_ENV=development electron .",
+    "build:electron": "tsc",
+    "build:frontend": "cd frontend && npm run build:desktop",
+    "build": "npm run build:frontend && npm run build:electron && electron-builder --config electron/builder.config.cjs",
+    "lint": "cd frontend && npm run lint",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.5",
+    "wait-on": "^7.2.0"
+  }
+}

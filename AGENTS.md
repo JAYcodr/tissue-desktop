@@ -10,6 +10,9 @@ This repo is a FastAPI + SQLite backend with a Vite/React frontend. In Docker, N
 - `nginx/app.conf`: serves `/app/dist` and proxies `/api/*` -> `127.0.0.1:8000`
 - `frontend/`: Vite + React + TS + Ant Design UI
 - `dist/`: built frontend output copied here for Docker/Nginx (treat as generated)
+- `electron/`: Electron main process, preload script, and builder config (desktop only)
+- `dist-electron/`: compiled Electron output (treat as generated)
+- `release/`: packaged Electron installers (treat as generated)
 
 ## Build / Lint / Test Commands
 
@@ -39,11 +42,35 @@ From `frontend/`:
 - Install: `npm install`
 - Dev server: `npm run dev`
 - Typecheck + build (Docker mode): `npm run build`
+- Typecheck + build (Desktop mode): `npm run build:desktop`
 - Lint: `npm run lint`
 
 CI/Docker build (matches `.github/workflows/build*.yml`):
 
 - `cd frontend && npm install && CI=false npm run build && cp -r ./dist ../dist`
+
+### Desktop (Electron)
+
+From repo root:
+
+- Install all deps: `npm install` (uses npm workspaces; installs frontend deps too)
+- Dev mode: `npm run dev`
+- Build frontend for desktop: `npm run build:frontend`
+- Build + package Electron: `npm run build`
+- Lint: `npm run lint`
+
+The Electron main process (`electron/main/index.ts`) is responsible for:
+
+- Starting the Python sidecar (`app.desktop_main:app`) on a free port.
+- Setting `TISSUE_DESKTOP=1`, `TISSUE_DESKTOP_DATA_DIR`, and `TISSUE_DESKTOP_PORT`.
+- Waiting for `/api/common/health` before showing the window.
+- Providing IPC channels: `get-backend-url`, `get-user-data-path`, `open-directory`.
+
+The preload script (`electron/preload/index.ts`) exposes a typed `window.electronAPI`.
+
+The renderer uses `frontend/src/configs/desktop.ts` when Vite runs with `--mode desktop`.
+The desktop config reads the backend URL from `window.electronAPI.backendUrl`, which already
+includes the `/api` prefix because `app.desktop_main.py` mounts all backend routes under `/api`.
 
 ### Docker (full app)
 
@@ -79,9 +106,10 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 
 ### General
 
-- Keep changes scoped: don’t hand-edit generated artifacts (notably `dist/` and `frontend/dist/`).
+- Keep changes scoped: don’t hand-edit generated artifacts (notably `dist/`, `frontend/dist/`, `dist-electron/`, and `release/`).
 - Prefer small, reviewable diffs; avoid drive-by reformatting.
 - Avoid committing secrets. This repo currently contains hard-coded secrets/defaults (e.g. JWT secret and default admin password); do not add more.
+- When modifying an existing file for desktop needs, add `// DESKTOP-MODIFIED: <reason>` near the change.
 
 ### Python (FastAPI backend)
 
@@ -159,7 +187,30 @@ If/when frontend tests are added (e.g. Vitest), prefer `npm run test -- <pattern
 **Config**
 
 - Docker build uses `--mode docker` and expects API at `document.location.origin + '/api'` (`frontend/src/configs/docker.ts`).
+- Desktop build uses `--mode desktop` and expects API at `window.electronAPI.backendUrl` (`frontend/src/configs/desktop.ts`).
 - Development config currently points to a specific LAN host (`frontend/src/configs/development.ts`); don’t hard-code new environment-specific URLs.
+
+### Electron (desktop)
+
+**Structure**
+
+- `electron/main/index.ts`: main process, window lifecycle, Python sidecar management.
+- `electron/preload/index.ts`: isolated preload script, exposes `window.electronAPI`.
+- `electron/electron.d.ts`: TypeScript declarations for `window.electronAPI`.
+- `electron/builder.config.cjs`: `electron-builder` packaging configuration.
+- `electron/resources/`: static assets such as icons.
+
+**Safety**
+
+- Keep `contextIsolation: true` and `nodeIntegration: false` in `webPreferences`.
+- All main-to-renderer communication goes through `contextBridge.exposeInMainWorld`.
+- Do not expose raw Node APIs to the renderer.
+
+**Build**
+
+- Root `tsconfig.json` compiles `electron/**/*.ts` into `dist-electron/`.
+- `npm run build:electron` runs `tsc`.
+- `electron-builder` packages `dist-electron/`, `frontend/dist/`, and the Python backend files.
 
 ## Cursor / Copilot Rules
 
