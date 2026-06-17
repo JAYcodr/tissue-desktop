@@ -100,11 +100,31 @@ npm run dev
 # 仅构建前端桌面资源
 npm run build:frontend
 
-# 构建前端 + 打包 Electron（当前平台）
+# 仅构建 Python 后端可执行文件（开发调试用）
+npm run build:backend
+
+# 完整构建：前端 + Electron + Python 后端 + 安装包（当前平台）
 npm run build
 ```
 
 构建产物输出到 `release/`。
+
+#### 打包说明
+
+桌面版使用 [PyInstaller](https://pyinstaller.org/) 将 FastAPI 后端打包成独立的可执行文件
+`tissue-backend`（macOS）或 `tissue-backend.exe`（Windows），再通过 `electron-builder`
+随 Electron 一起分发给最终用户。打包前请确保：
+
+1. Python 3.11+ 已安装；
+2. 已创建虚拟环境并安装 `requirements.txt`（CI 会自动完成）；
+3. macOS 上生成的 `.app` 未做签名与公证，首次运行需在“系统设置 > 隐私与安全性”中允许；
+4. Windows 上生成的 `.exe` 未做代码签名，SmartScreen 可能会提示。
+
+#### CI 构建
+
+`.github/workflows/build-desktop.yml` 会在 `push` 到 `main` / `develop`
+或手动触发时，在 `macos-latest` 与 `windows-latest` 上同时运行 `npm run build`，
+并将 `release/` 目录作为 Artifact 上传。
 
 ### 额外说明
 
@@ -118,5 +138,4 @@ npm run build
 
 <img width="1685" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/e5707b21-2737-4fb6-839e-a213318eddf3">
 <img width="1685" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/4597df88-87bf-40a6-805f-37dc0b5e02ad">
-<img width="1682" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/ac11e3c0-7631-40cb-bef6-7074fe3bbc2f">
-
+<img width="1682" alt="image" src="https://github.com/chris-2s/tissue/assets/159798260/ac11e3d0-7631-40cb-bef6-7074fe3bbc2f">

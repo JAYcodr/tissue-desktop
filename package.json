@@ -7,6 +7,7 @@
   "workspaces": [
     "frontend"
   ],
+  "// DESKTOP-MODIFIED": "added build:backend and included it in the full production build",
   "scripts": {
     "dev": "npm run build:electron && concurrently \"npm run dev:frontend\" \"npm run watch:electron\" \"npm run start:electron:dev\"",
     "dev:frontend": "cd frontend && npm run dev -- --mode desktop",
@@ -14,7 +15,8 @@
     "start:electron:dev": "wait-on tcp:127.0.0.1:5173 && cross-env NODE_ENV=development electron .",
     "build:electron": "tsc",
     "build:frontend": "cd frontend && npm run build:desktop",
-    "build": "npm run build:frontend && npm run build:electron && electron-builder --config electron/builder.config.cjs",
+    "build:backend": "node scripts/build-backend.js",
+    "build": "npm run build:frontend && npm run build:electron && npm run build:backend && electron-builder --config electron/builder.config.cjs",
     "lint": "cd frontend && npm run lint",
     "postinstall": "electron-builder install-app-deps"
   },

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess, type SpawnOptions } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
@@ -18,7 +18,9 @@ function getProjectRoot(): string {
   if (isDev) {
     return process.cwd();
   }
-  return path.join(process.resourcesPath, 'app');
+  // DESKTOP-MODIFIED: in production the backend is the PyInstaller bundle under
+  // extraResources; this helper is only used in dev to derive PYTHONPATH and cwd.
+  return process.resourcesPath;
 }
 
 function getPythonCommand(projectRoot: string): string {
@@ -76,29 +78,47 @@ async function startBackend(): Promise<string> {
   const dataDir = getDataDir();
   fs.mkdirSync(dataDir, { recursive: true });
 
-  const projectRoot = getProjectRoot();
   const port = await getFreePort();
-  const python = getPythonCommand(projectRoot);
 
   backendUrl = `http://127.0.0.1:${port}/api`;
 
-  const env = {
+  const env: NodeJS.ProcessEnv = {
     ...process.env,
     TISSUE_DESKTOP: '1',
     TISSUE_DESKTOP_DATA_DIR: dataDir,
     TISSUE_DESKTOP_PORT: String(port),
-    PYTHONPATH: projectRoot,
   };
 
-  backendProcess = spawn(
-    python,
-    ['-m', 'uvicorn', 'app.desktop_main:app', '--host', '127.0.0.1', '--port', String(port), '--log-level', 'info'],
-    {
-      cwd: projectRoot,
-      env,
-      stdio: 'pipe',
-    }
-  );
+  // DESKTOP-MODIFIED: in production, run the PyInstaller-built sidecar instead of
+  // relying on a system Python interpreter.  Dev continues to use the local venv.
+  let command: string;
+  let args: string[];
+  let options: { cwd: string; env: NodeJS.ProcessEnv; stdio: 'pipe' };
+
+  if (isDev) {
+    const projectRoot = getProjectRoot();
+    command = getPythonCommand(projectRoot);
+    args = [
+      '-m',
+      'uvicorn',
+      'app.desktop_main:app',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(port),
+      '--log-level',
+      'info',
+    ];
+    env.PYTHONPATH = projectRoot;
+    options = { cwd: projectRoot, env, stdio: 'pipe' };
+  } else {
+    const exeName = process.platform === 'win32' ? 'tissue-backend.exe' : 'tissue-backend';
+    command = path.join(process.resourcesPath, 'backend', exeName);
+    args = [];
+    options = { cwd: process.resourcesPath, env, stdio: 'pipe' };
+  }
+
+  backendProcess = spawn(command, args, options);
 
   backendProcess.stdout?.on('data', (data: Buffer) => {
     console.log(`[backend] ${data.toString().trim()}`);
