@@ -99,7 +99,7 @@ class JavBusSpider(Spider):
         if include_downloads:
             meta.downloads = self.get_downloads(url, response.text)
 
-        if include_downloads:
+        if include_previews:
             meta.previews = self.get_previews(html)
 
         return meta

@@ -67,7 +67,7 @@ class Telegram(Base):
 
         if picture:
             url = f'https://api.telegram.org/bot{token}/sendPhoto'
-            requests.post(url=url, data={
+            response = requests.post(url=url, data={
                 'chat_id': chat_id,
                 'parse_mode': 'HTML',
                 'caption': content,
@@ -75,10 +75,14 @@ class Telegram(Base):
             }, files={
                 'photo': (picture_name, picture)
             }, timeout=10)
+            if not response.ok:
+                logger.error(f"Telegram 发送图片消息失败: {response.status_code} {response.text}")
         else:
             url = f'https://api.telegram.org/bot{token}/sendMessage'
-            requests.post(url=url, data={
+            response = requests.post(url=url, data={
                 'chat_id': chat_id,
                 'parse_mode': 'HTML',
                 'text': content,
             }, timeout=10)
+            if not response.ok:
+                logger.error(f"Telegram 发送文字消息失败: {response.status_code} {response.text}")

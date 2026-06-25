@@ -51,8 +51,12 @@ def get_full(path: str):
     if not os.path.exists(path):
         return None
 
-    tree = ET.parse(path)
-    root = tree.getroot()
+    try:
+        tree = ET.parse(path)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        logger.error(f"NFO 文件解析失败: {path} — {e}")
+        return None
 
     nfo = VideoDetail(path=path)
     for element in root:

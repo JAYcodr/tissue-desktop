@@ -122,9 +122,6 @@ class VideoService(BaseService):
         subtitle_paths = self.find_subtitle_paths(video.path, video.num)
         _, ext_name = os.path.splitext(video.path)
 
-        if trans_mode == 'move':
-            self.delete_video_meta(video.path)
-
         actor_folder = (",".join(map(lambda i: i.name, video.actors[0:3])) + (
             "等" if len(video.actors) > 3 else "")) if len(video.actors) > 0 else "未知演员"
         video_folder = video.title[0:80]
@@ -138,36 +135,46 @@ class VideoService(BaseService):
         if video.is_zh:
             video_tags.append("C")
 
-        video_path = os.path.join(save_path, video.num + (f'-{"".join(video_tags)}' if video_tags else '') + ext_name)
+        dest_video_path = os.path.join(save_path, video.num + (f'-{"".join(video_tags)}' if video_tags else '') + ext_name)
 
-        if video_path != video.path:
-            if os.path.exists(video_path) and os.stat(video_path).st_size != os.stat(video.path).st_size:
+        need_transfer = dest_video_path != video.path
+
+        if need_transfer:
+            # Step 1: always copy first — preserve source for safety
+            if os.path.exists(dest_video_path) and os.stat(dest_video_path).st_size != os.stat(video.path).st_size:
                 if trans_mode == 'move':
                     os.remove(video.path)
             else:
-                if trans_mode == 'move':
-                    logger.info(f"开始移动影片《{video.num}》...")
-                    shutil.move(video.path, video_path)
-                    logger.info(f"移动影片完成: {video_path}")
-                else:
-                    logger.info(f"开始复制影片...")
-                    shutil.copy(video.path, video_path)
-                    logger.info(f"复制影片完成: {video_path}")
-            self.trans_subtitles(video.path, video_path, subtitle_paths, trans_mode)
-            utils.remove_empty_directory(video.path)
+                logger.info(f"开始{'移动' if trans_mode == 'move' else '复制'}影片《{video.num}》...")
+                shutil.copy2(video.path, dest_video_path)
+                logger.info(f"{'移动' if trans_mode == 'move' else '复制'}影片完成: {dest_video_path}")
 
+                # Step 2: transfer subtitles
+                self.trans_subtitles(video.path, dest_video_path, subtitle_paths, trans_mode)
+
+        # Step 3: cover & images (network/IO — may fail)
         if video.cover:
             logger.info(f"生成封面及水印图片")
             cover_data = SpiderService.get_video_cover(video.cover)
-            save_images(video, video_path, cover_data)
+            save_images(video, dest_video_path, cover_data)
 
+        # Step 4: NFO files
         logger.info(f"生成NFO文件")
-        new_nfo_path = nfo.get_nfo_path_by_video(video_path)
+        new_nfo_path = nfo.get_nfo_path_by_video(dest_video_path)
         nfo.save(new_nfo_path, video)
         shutil.copy(new_nfo_path, os.path.join(save_path, 'movie.nfo'))
 
+        # Step 5: cleanup source — only after all operations succeeded
+        if need_transfer and trans_mode == 'move':
+            if os.path.abspath(video.path) != os.path.abspath(dest_video_path) and os.path.exists(video.path):
+                logger.info(f"移动模式：清理源文件 {video.path}")
+                self.delete_video_meta(video.path)
+                os.remove(video.path)
+                utils.remove_empty_directory(video.path)
+                logger.info(f"源文件清理完成")
+
         logger.info(f"影片保存完成")
-        return video_path
+        return dest_video_path
 
     def delete_video(self, path):
         if not os.path.exists(path):

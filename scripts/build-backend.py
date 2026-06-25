@@ -52,7 +52,7 @@ def ensure_pyinstaller(python: str) -> None:
             capture_output=True,
             text=True,
         )
-    except Exception:
+    except (FileNotFoundError, subprocess.CalledProcessError):
         print("PyInstaller not found, installing...")
         subprocess.check_call(
             [python, "-m", "pip", "install", "--quiet", "pyinstaller>=6.0"]

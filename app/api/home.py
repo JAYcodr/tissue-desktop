@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import tailer
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
@@ -43,9 +42,14 @@ async def get_logs():
         with open(log_path, 'r', encoding='utf-8') as f:
             for line in f.readlines()[-50:]:
                 yield 'data: %s\n\n' % line
-        while True:
-            for t in tailer.follow(open(log_path, 'r', encoding='utf-8')):
-                yield 'data: %s\n\n' % (t or '')
-            time.sleep(1)
+        # Read new lines as they're appended — tail -f style, no fd leak
+        with open(log_path, 'r', encoding='utf-8') as f:
+            f.seek(0, 2)
+            while True:
+                line = f.readline()
+                if line:
+                    yield 'data: %s\n\n' % line.rstrip('\n')
+                else:
+                    time.sleep(1)
 
     return StreamingResponse(log_generator(), media_type="text/event-stream")

@@ -98,5 +98,38 @@ class LoggerManager:
         self.log("critical", msg, *args, **kwargs)
 
 
-# 初始化公共日志
-logger = LoggerManager()
+# DESKTOP-MODIFIED: lazy init — LoggerManager is created on first call instead
+# of at module-import time, so that environment variables can be set first.
+_logger_instance: LoggerManager | None = None
+
+
+def _get_logger() -> LoggerManager:
+    global _logger_instance
+    if _logger_instance is None:
+        _logger_instance = LoggerManager()
+    return _logger_instance
+
+
+# Convenience module-level functions that delegate to the lazy instance.
+# This avoids breaking every "from app.utils.logger import logger" call site.
+class _LazyLogger:
+    def info(self, msg, *args, **kwargs):
+        _get_logger().info(msg, *args, **kwargs)
+
+    def debug(self, msg, *args, **kwargs):
+        _get_logger().debug(msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        _get_logger().warning(msg, *args, **kwargs)
+
+    def warn(self, msg, *args, **kwargs):
+        _get_logger().warn(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        _get_logger().error(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        _get_logger().critical(msg, *args, **kwargs)
+
+
+logger = _LazyLogger()

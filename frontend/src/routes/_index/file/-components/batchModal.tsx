@@ -46,16 +46,19 @@ function BatchModal(props: Props) {
     }
 
     const {run: onSave, loading: onSaving} = useRequest(async () => {
-        for (const item of data) {
-            await onSaveSingle(item)
+        for (const [i, item] of data.entries()) {
+            await onSaveSingle(i, item)
         }
     }, {
         manual: true
     })
 
-    async function onSaveSingle(video: any) {
-        video.processStatus = 1
-        setData([...data])
+    async function onSaveSingle(index: number, video: any) {
+        setData(prev => {
+            const next = [...prev];
+            next[index] = {...next[index], processStatus: 1};
+            return next;
+        });
         try {
             const response = await videoApi.scrapeVideo(video.num)
             delete response.data.data.is_zh
@@ -63,11 +66,18 @@ function BatchModal(props: Props) {
             delete response.data.data.path
             const item = {...video, ...response.data.data}
             await videoApi.saveVideo(item, 'file')
-            video.processStatus = 2
+            setData(prev => {
+                const next = [...prev];
+                next[index] = {...next[index], processStatus: 2};
+                return next;
+            });
         } catch (err) {
-            video.processStatus = 3
-        } finally {
-            setData([...data])
+            console.error('[renderer] batch scrape failed:', err);
+            setData(prev => {
+                const next = [...prev];
+                next[index] = {...next[index], processStatus: 3};
+                return next;
+            });
         }
     }
 

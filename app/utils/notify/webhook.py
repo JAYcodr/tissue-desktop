@@ -10,6 +10,7 @@ class Webhook(Base):
         self.send('video', video.model_dump())
 
     def send_subscribe(self, subscribe: SubscribeNotify):
+        logger.info(f"Webhook 暂不支持发送订阅通知 (subscribe.num={subscribe.num})")
         pass
 
     def send_cookie(self, cookie: CookieNotify):
@@ -17,6 +18,6 @@ class Webhook(Base):
 
     def send(self, event: str, payload: dict):
         requests.post(self.setting.webhook_url, json={
-            event: event,
-            payload: payload
+            'event': event,
+            'payload': payload
         }, timeout=10)

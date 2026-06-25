@@ -22,7 +22,11 @@ def _verify_jwt_token(token: str) -> bool:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         g().current_user_id = int(payload['sub'])
         return True
-    except Exception:
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token 已过期")
+        return False
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"JWT token 无效: {e}")
         return False
 
 

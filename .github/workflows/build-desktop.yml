@@ -51,6 +51,9 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
+      - name: Sync version
+        run: npm run sync:version
+
       - name: Build and publish desktop artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

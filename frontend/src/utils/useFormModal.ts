@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {Form, FormInstance, ModalProps} from "antd";
+import {Form, FormInstance, message, ModalProps} from "antd";
 
 interface Params {
     service: ((...args: any[]) => Promise<any>)
@@ -36,7 +36,9 @@ export function useFormModal(params: Params) {
             setValues({})
             form.resetFields()
         } catch (e) {
-
+            console.error('[renderer] form submit error:', e);
+            const msg = e instanceof Error ? e.message : String(e);
+            message.error(msg || '提交失败');
         } finally {
             setConfirmLoading(false)
         }

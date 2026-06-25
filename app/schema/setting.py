@@ -7,20 +7,16 @@ from pydantic import BaseModel, Field
 from app.utils.paths import get_config_path, get_default_media_paths
 
 
-# DESKTOP-MODIFIED: default media paths depend on runtime mode (Docker vs desktop)
-_default_media_paths = get_default_media_paths()
-
-
 class SettingApp(BaseModel):
     timeout: int = 60
-    video_path: str = Field(default_factory=lambda: _default_media_paths["video_path"])
+    video_path: str = Field(default_factory=lambda: get_default_media_paths()["video_path"])
 
     video_size_minimum: int = 100
     video_format: str = '.mp4,.mkv,.mov'
 
 
 class SettingFile(BaseModel):
-    path: str = Field(default_factory=lambda: _default_media_paths["file_path"])
+    path: str = Field(default_factory=lambda: get_default_media_paths()["file_path"])
     trans_mode: str = 'copy'
 
 
@@ -29,8 +25,8 @@ class SettingDownload(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     trans_mode: str = 'copy'
-    download_path: str = Field(default_factory=lambda: _default_media_paths["download_path"])
-    mapping_path: str = Field(default_factory=lambda: _default_media_paths["mapping_path"])
+    download_path: str = Field(default_factory=lambda: get_default_media_paths()["download_path"])
+    mapping_path: str = Field(default_factory=lambda: get_default_media_paths()["mapping_path"])
     trans_auto: bool = False
     delete_auto: bool = False
     category: Optional[str] = ''
@@ -53,10 +49,6 @@ class SettingCookieCloud(BaseModel):
     password: Optional[str] = None
 
 
-# DESKTOP-MODIFIED: runtime config file path
-config_path = get_config_path()
-
-
 class Setting(BaseModel):
     app: SettingApp = SettingApp()
     file: SettingFile = SettingFile()
@@ -71,7 +63,7 @@ class Setting(BaseModel):
     @staticmethod
     def read():
         parser = ConfigParser()
-        parser.read(config_path)
+        parser.read(get_config_path())
         sections = parser.sections()
         setting = {}
         for section in sections:
@@ -82,7 +74,7 @@ class Setting(BaseModel):
     @staticmethod
     def write_section(section: str, setting: dict):
         parser = ConfigParser()
-        parser.read(config_path)
+        parser.read(get_config_path())
         parser[section] = setting
-        with open(config_path, 'w') as file:
+        with open(get_config_path(), 'w') as file:
             parser.write(file)

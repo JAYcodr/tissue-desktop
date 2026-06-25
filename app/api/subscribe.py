@@ -53,5 +53,5 @@ def search_video(num: str, service=Depends(get_subscribe_service)):
 
 @router.post('/download')
 def download_video(video: schema.SubscribeCreate, link: schema.VideoDownload, service=Depends(get_subscribe_service)):
-    service.download_video_manual(video, link)
+    service.download_video(video, link)
     return R.ok()

@@ -9,7 +9,7 @@ router = APIRouter()
 @router.get('/')
 def get_histories(service=Depends(get_history_service)):
     histories = service.get_histories()
-    return histories
+    return R.list(histories)
 
 
 @router.delete('/')

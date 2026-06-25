@@ -17,10 +17,11 @@ request.interceptors.request.use(request => {
 })
 
 request.interceptors.response.use(response => response, error => {
-    if (error.response.status == 401) {
+    if (error.response?.status == 401) {
         store.dispatch.auth.logout()
-    } else if (error.response.data) {
-        message.error(error.response.data)
+    } else if (error.response?.data) {
+        const data = error.response.data;
+        message.error(typeof data === 'string' ? data : data?.detail || JSON.stringify(data));
     }
     return Promise.reject(error)
 })

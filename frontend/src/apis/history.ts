@@ -5,7 +5,7 @@ export async function getHistories() {
         url: '/history/',
         method: 'get'
     })
-    return response.data
+    return response.data.data
 }
 
 export function deleteHistory(id: number) {

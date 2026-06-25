@@ -2,20 +2,20 @@ import os.path
 import hashlib
 from pathlib import Path
 
-from app.utils.paths import get_cache_dir, get_data_dir
+from app.utils.paths import get_cache_dir
 
-# DESKTOP-MODIFIED: cache lives in the runtime data dir
-data_dir = get_data_dir()
-if not data_dir.exists():
-    data_dir.mkdir(parents=True, exist_ok=True)
 
-cache_path = get_cache_dir()
+def _get_cache_base() -> str:
+    """Return the cache directory, ensuring it exists."""
+    cache_path = get_cache_dir()
+    cache_path.mkdir(parents=True, exist_ok=True)
+    return str(cache_path)
 
 
 def get_cache_path(parent: str, path: str):
     md = hashlib.md5()
     md.update(path.encode("utf-8"))
-    return os.path.join(cache_path, parent, md.hexdigest())
+    return os.path.join(_get_cache_base(), parent, md.hexdigest())
 
 
 def cache_file(parent: str, path: str, content: bytes):

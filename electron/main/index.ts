@@ -274,13 +274,18 @@ async function createWindow(): Promise<void> {
     return { action: 'deny' };
   });
 
-  // setWindowOpenHandler only intercepts window.open; the renderer can still
-  // trigger top-level navigation via window.location or <a href>. Whitelist
-  // the dev server / file:// origin and forward everything else to the OS
-  // browser so a compromised renderer can't drag the user to a phishing page.
+  // DESKTOP-MODIFIED: use URL origin comparison instead of startsWith to
+  // prevent subdomain / port-suffix attacks (e.g. localhost:52731 matching
+  // allowedOrigin = "http://localhost:5273").
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const allowedOrigin = isDev ? devServerUrl : 'file://';
-    if (!url.startsWith(allowedOrigin)) {
+    const allowedOrigin = isDev ? new URL(devServerUrl).origin : 'file://';
+    let parsedOrigin: string;
+    try {
+      parsedOrigin = new URL(url).origin;
+    } catch {
+      parsedOrigin = '';
+    }
+    if (parsedOrigin !== allowedOrigin) {
       event.preventDefault();
       shell.openExternal(url).catch((error) => {
         console.error(`[shell] failed to open external URL ${url}:`, error);
@@ -321,7 +326,13 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
+  // DESKTOP-MODIFIED: guard against preload reading a stale empty backendUrl
+  // when activate fires before startBackend() completes (macOS).
   if (BrowserWindow.getAllWindows().length === 0) {
+    if (!backendUrl) {
+      console.warn('[electron] activate fired before backendUrl is ready — skipping');
+      return;
+    }
     createWindow().catch((error) => {
       console.error('Failed to recreate window:', error);
     });

@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from PIL import Image
+
+_BADGE_DIR = Path(__file__).resolve().parent
 
 
 def tags(fan_art: Image, is_zh, is_uncensored):
@@ -7,12 +11,12 @@ def tags(fan_art: Image, is_zh, is_uncensored):
 
     index = 0
     if is_zh:
-        tag = Image.open("./app/utils/image/ch.png").convert('RGBA')
+        tag = Image.open(_BADGE_DIR / "ch.png").convert('RGBA')
         thumb = add_badges(thumb, tag, index)
         index += 1
 
     if is_uncensored:
-        tag = Image.open("./app/utils/image/uncensored.png").convert('RGBA')
+        tag = Image.open(_BADGE_DIR / "uncensored.png").convert('RGBA')
         thumb = add_badges(thumb, tag, index)
         index += 1
 

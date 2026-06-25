@@ -73,9 +73,6 @@ class SubscribeService(BaseService):
             raise BizException("未找到影片")
         return video
 
-    @transaction
-    def download_video_manual(self, video: schema.SubscribeCreate, link: schema.VideoDownload):
-        self.download_video(video, link)
 
     def do_subscribe(self):
         subscribes = self.get_subscribes()

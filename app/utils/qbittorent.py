@@ -123,7 +123,8 @@ class QBittorent:
             if trackers:
                 client.torrents_add_trackers(torrent_hash=torrent_hash, urls=trackers)
 
-        self.remove_torrent_tags(torrent_hash, [nonce])
+        if torrent_hash:
+            self.remove_torrent_tags(torrent_hash, [nonce])
         return AddMagnetResponse(status_code=200, hash=torrent_hash or None)
 
 

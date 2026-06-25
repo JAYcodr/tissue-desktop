@@ -49,6 +49,10 @@ export const auth = createModel<RootModel>()({
                 Cookies.set('userToken', token, params.remember ? {expires: 365} : {})
                 dispatch.auth.setToken(token)
                 await router.invalidate()
+            } catch (e) {
+                const { message: antMsg } = await import('antd');
+                const msg = (e as any)?.response?.data || (e as Error)?.message || '登录失败';
+                antMsg.error(msg);
             } finally {
                 dispatch.auth.setLogging(false)
             }
@@ -60,11 +64,14 @@ export const auth = createModel<RootModel>()({
             await router.invalidate()
         },
         async getInfo() {
-            const response = await api.getInfo()
-            dispatch.auth.setInfo(response.data.data)
-
-            const videos = await videoApi.getVideos()
-            dispatch.auth.setVideos(videos)
+            try {
+                const response = await api.getInfo()
+                dispatch.auth.setInfo(response.data.data)
+                const videos = await videoApi.getVideos()
+                dispatch.auth.setVideos(videos)
+            } catch (e) {
+                console.error('[renderer] Failed to load user info:', e);
+            }
         },
         async getVersions() {
             const response = await api.getVersions()

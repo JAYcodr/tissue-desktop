@@ -101,15 +101,23 @@ class Scheduler:
 
     def manually(self, key: str):
         job = self.scheduler.get_job(key)
+        if not job:
+            logger.warning(f"手动执行失败：任务 {key} 不存在")
+            return
         job.modify(next_run_time=datetime.now())
 
     @classmethod
     def do_job(cls, key):
-        job = cls.jobs[key]
+        job = cls.jobs.get(key)
+        if not job:
+            logger.error(f"do_job 收到未知任务 key: {key}")
+            return
         try:
             logger.info(f'执行任务，{job.name}')
             job.running += 1
             job.job()
+        except Exception as e:
+            logger.error(f'任务 {job.name} 执行失败: {e}')
         finally:
             job.running -= 1
 
